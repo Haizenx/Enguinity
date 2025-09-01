@@ -34,7 +34,10 @@ const ProjectForm = ({ onSubmit, onCancel }) => {
         const formDataFile = new FormData();
         formDataFile.append('file', file);
 
-        const res = await axios.post('http://localhost:5001/api/upload', formDataFile);
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+          ? 'http://localhost:5001/api'
+          : 'https://enguinity-9.onrender.com/api';
+        const res = await axios.post(`${API_BASE_URL}/upload`, formDataFile);
         uploadedUrl = res.data.url;
         setIsUploading(false);
       }

@@ -11,8 +11,14 @@ const MessageInput = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
+      return;
+    }
+    // Enforce max 5MB image to keep base64 payload reasonable (< ~7MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large (max 5MB)");
       return;
     }
 
@@ -88,7 +94,7 @@ const MessageInput = () => {
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
+            className={`btn btn-circle
                      ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
           >

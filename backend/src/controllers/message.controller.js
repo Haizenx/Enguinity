@@ -8,7 +8,39 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const users = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+
+    const users = await User.aggregate([
+      { $match: { _id: { $ne: loggedInUserId } } },
+      {
+        $lookup: {
+          from: "messages",
+          let: { otherUserId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $and: [ { $eq: ["$senderId", "$$otherUserId"] }, { $eq: ["$receiverId", loggedInUserId] } ] },
+                    { $and: [ { $eq: ["$senderId", loggedInUserId] }, { $eq: ["$receiverId", "$$otherUserId"] } ] },
+                  ],
+                },
+              },
+            },
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 },
+          ],
+          as: "lastMessage",
+        },
+      },
+      {
+        $addFields: {
+          lastMessageAt: { $ifNull: [ { $arrayElemAt: ["$lastMessage.createdAt", 0] }, null ] },
+        },
+      },
+      { $project: { password: 0 } },
+      { $sort: { lastMessageAt: -1, createdAt: -1 } },
+    ]);
+
     res.status(200).json(users);
   } catch (error) {
     console.error("Error in getUsersForSidebar:", error.message);
@@ -24,9 +56,9 @@ export const getMessages = async (req, res) => {
     const messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, recieverId: myId },
+        { senderId: userToChatId, receiverId: myId },
       ],
-    });
+    }).sort({ createdAt: 1 });
 
     res.status(200).json(messages);
   } catch (error) {

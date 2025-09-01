@@ -32,7 +32,8 @@ const app = express();
 const server = http.createServer(app); // <--- NEW: Create the server by passing the app
 
 // 2. Apply all Express middleware to 'app' first
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
 // Define allowed origins for BOTH HTTP API and Socket.IO
@@ -42,8 +43,9 @@ const allowedOrigins = [
 ];
 
 // Apply the main CORS middleware to Express app. This MUST be before routes.
-app.use(cors({
-  origin: function (origin, callback) {
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
@@ -51,8 +53,12 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 
 // API Routes
 app.use("/api/auth", authRoutes);

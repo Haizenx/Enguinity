@@ -23,7 +23,9 @@ const formatDate = (dateString) => {
 
 const formatNumberDisplay = (num) => (typeof num === 'number' ? num.toFixed(2) : '0.00'); // <-- ADD THIS
 const getBackendUrl = () => {
-    return import.meta.env.MODE === "development" ? "http://localhost:5001/api" : "/api";
+    return window.location.hostname === 'localhost' 
+      ? 'http://localhost:5001/api'
+      : 'https://enguinity-9.onrender.com/api';
 };
 
 const ProjectDetailsPage = () => {

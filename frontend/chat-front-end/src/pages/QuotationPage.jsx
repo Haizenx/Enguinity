@@ -25,7 +25,9 @@ const QuotationPage = () => {
   const [modalData, setModalData] = useState(null);
   const [modalContent, setModalContent] = useState({ title: '', message: '', confirmText: 'Confirm' });
 
-  const API_BASE_URL = 'https://enguinity-5.onrender.com/api';
+  const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5001/api'
+    : 'https://enguinity-9.onrender.com/api';
 
   const fetchItems = useCallback(async () => {
     console.log("QuotationPage: Fetching items...");

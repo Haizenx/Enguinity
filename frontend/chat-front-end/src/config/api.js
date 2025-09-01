@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3001/api'
-  : '/api'; // For production, use relative path
+  ? 'http://localhost:5001/api'
+  : 'https://enguinity-9.onrender.com/api';
 
 export const API_ENDPOINTS = {
   PROJECTS: `${API_BASE_URL}/projects`,

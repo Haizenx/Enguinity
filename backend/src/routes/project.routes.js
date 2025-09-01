@@ -435,8 +435,11 @@ router.get('/:projectId/documents/:documentId/view', async (req, res) => {
         const document = project.documents.id(req.params.documentId);
         if (!document) return res.status(404).json({ message: 'Document not found in this project.' });
 
-        // Redirect to the Cloudinary URL with flags that tell the browser to display it inline
-        res.redirect(document.url);
+        // Stream the file inline with correct content type
+        const response = await axios({ method: 'GET', url: document.url, responseType: 'stream' });
+        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('Content-Type', getContentType(document.name));
+        response.data.pipe(res);
 
     } catch (err) {
         console.error('Error viewing document:', err);
@@ -457,14 +460,17 @@ router.get('/:projectId/documents/:documentId/download', async (req, res) => {
         const document = project.documents.id(req.params.documentId);
         if (!document) return res.status(404).json({ message: 'Document not found in this project.' });
 
-        // This creates a special Cloudinary URL that forces a download prompt
-        const downloadUrl = document.url.replace('/upload/', `/upload/fl_attachment/`);
-
-        res.redirect(downloadUrl);
+        // Stream the file directly and set a proper filename in headers (avoids Cloudinary 400)
+        const response = await axios({ method: 'GET', url: document.url, responseType: 'stream' });
+        const filename = document.name || 'download';
+        res.setHeader('Content-Type', getContentType(filename));
+        // Include both legacy and RFC 5987 filename headers for wide browser support
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+        return response.data.pipe(res);
         
     } catch (err) {
         console.error('Error downloading document:', err);
-        res.status(500).json({ message: 'Server error downloading document' });
+        return res.status(500).json({ message: 'Server error downloading document' });
     }
 });
 
@@ -527,63 +533,6 @@ router.patch('/:projectId/imageUrl', uploadCoverPhoto.single('coverPhoto'), asyn
             return res.status(400).json({ message: `File upload error: ${err.message}` });
         }
         res.status(500).json({ message: 'Server error updating cover photo', error: err.message, stack: err.stack });
-    }
-});
-router.get('/:projectId/documents/:documentId/view', async (req, res) => {
-    try {
-        const project = await Project.findById(req.params.projectId);
-        if (!project) return res.status(404).json({ message: 'Project not found.' });
-
-        const document = project.documents.id(req.params.documentId);
-        if (!document) return res.status(404).json({ message: 'Document not found.' });
-
-        // Fetch the file from the cloud as a downloadable stream
-        const response = await axios({
-            method: 'GET',
-            url: document.url,
-            responseType: 'stream'
-        });
-
-        // Set the headers to tell the browser to display the file IN the browser
-        res.setHeader('Content-Disposition', 'inline');
-        res.setHeader('Content-Type', getContentType(document.name)); // Uses your helper function
-
-        // Send the file stream directly to the user
-        response.data.pipe(res);
-
-    } catch (err) {
-        console.error('Error viewing document:', err);
-        res.status(500).json({ message: 'Server error viewing document' });
-    }
-});
-
-// Route to download a document
-router.get('/:projectId/documents/:documentId/download', async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.projectId) || !mongoose.isValidObjectId(req.params.documentId)) {
-            return res.status(400).json({ message: 'Invalid ID format for project or document.' });
-        }
-
-        const project = await Project.findById(req.params.projectId);
-        if (!project) {
-            return res.status(404).json({ message: 'Project not found.' });
-        }
-
-        const document = project.documents.find(doc => doc._id.toString() === req.params.documentId);
-        if (!document) {
-            return res.status(404).json({ message: 'Document not found in this project.' });
-        }
-
-        // For downloading, we'll use Cloudinary's attachment transformation
-        const cloudinaryUrl = document.url.replace('/upload/', '/upload/fl_force_strip,fl_attachment:attachment/');
-        
-        // Set appropriate headers for downloading
-        res.setHeader('Content-Type', getContentType(document.name));
-        res.setHeader('Content-Disposition', `attachment; filename="${document.name}"`);
-        res.redirect(cloudinaryUrl);
-    } catch (err) {
-        console.error('Error downloading document:', err);
-        res.status(500).json({ message: 'Server error downloading document', error: err.message });
     }
 });
 
